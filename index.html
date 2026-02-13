@@ -1,182 +1,341 @@
 <!doctype html>
 <html lang="es">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Cuenta atrás</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cuenta atrás</title>
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-<style>
-body { margin:0; font-family: system-ui; }
-header { padding:16px; }
-h1 { margin:0 0 6px; font-size:18px; }
-.sub { opacity:.7; font-size:14px; }
+  <!-- jQuery -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 
-.grid { display:grid; gap:12px; padding:0 16px 16px; }
-.card { border:1px solid #eee; border-radius:16px; padding:12px; }
-#map { height:50vh; border-radius:16px; }
+  <style>
+    body { margin:0; font-family: system-ui; background-color: rgb(181, 114, 114); }
+    header { padding:16px; }
+    h1 { margin:0 0 6px; font-size:18px; }
+    .sub { opacity:.7; font-size:14px; }
 
-.big { font-size:20px; font-weight:700; }
-.muted { opacity:.7; }
-progress { width:100%; height:14px; }
+    .grid { display:grid; gap:12px; padding:0 16px 16px; }
+    .card { border:1px solid #04040b; border-radius:16px; padding:12px; }
+    #map { height:50vh; border-radius:16px; }
 
-.reveal { display:none; margin-top:10px; padding:10px; border-radius:12px; background:#f4f4ff; }
+    .big { font-size:20px; font-weight:700; }
+    .muted { opacity:.7; }
+    progress { width:100%; height:14px; }
 
-.milestones { display:grid; gap:10px; margin-top:10px; }
-.mcard { border:1px solid #eee; border-radius:12px; padding:10px; }
-.locked { opacity:.4; }
-</style>
+    .reveal { display:none; margin-top:10px; padding:10px; border-radius:12px; background:#7171b8; }
+
+    .milestones { display:grid; gap:10px; margin-top:10px; }
+    .mcard { border:1px solid #948989; border-radius:12px; padding:10px; }
+    .locked { opacity:.4; }
+  </style>
 </head>
 
 <body>
 
-<!-- 🔒 PANTALLA DE LOGIN -->
-<div id="loginScreen" style="
-position:fixed; inset:0; background:white;
-display:flex; flex-direction:column;
-align-items:center; justify-content:center;
-z-index:9999; text-align:center; padding:20px;
-">
-<h2>🔒 Acceso privado</h2>
-<p>Introduce la clave para continuar</p>
-<input type="password" id="passwordInput" placeholder="Clave..."
-style="padding:10px; border-radius:8px; border:1px solid #ccc;">
-<button onclick="checkPassword()"
-style="margin-top:10px; padding:10px 16px; border-radius:8px; border:none; background:black; color:white;">
-Entrar
-</button>
-<p id="errorMsg" style="color:red; display:none;">Clave incorrecta</p>
-</div>
+  <!-- 🔒 PANTALLA DE LOGIN -->
+  <div id="loginScreen" style="
+    position:fixed; inset:0; background:rgb(180, 106, 106);
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    z-index:9999; text-align:center; padding:20px;
+  ">
+    <h2>🔒 Solo la mejor novia del mundo puede acceder</h2>
+    <p>Introduce la fecha más bonita del mundo</p>
+    <input type="password" id="passwordInput" placeholder="Clave..."
+      style="padding:10px; border-radius:8px; border:1px solid #000000;">
+    <button id="loginBtn"
+      style="margin-top:10px; padding:10px 16px; border-radius:8px; border:none; background:black; color:white; cursor:pointer;">
+      Entrar
+    </button>
+    <p id="errorMsg" style="color:red; display:none;">Clave incorrecta</p>
+  </div>
 
-<header>
-<h1>Algo se está preparando…</h1>
-<div class="sub">No hagas planes el fin de semana del <b>8 de mayo de 2026</b>.</div>
-</header>
+  <header>
+    <h1>Ves preparandote…</h1>
+    <div class="sub">NO HAGAS PLANES PARA EL FIN DE SEMANA DE <b>...</b></div>
+  </header>
 
-<div class="grid">
-<div class="card">
-<div class="big" id="countdown"></div>
-<div class="muted" id="progressText"></div>
-<progress id="timeProgress" value="0" max="100"></progress>
+  <div class="grid">
+    <div class="card">
+      <div class="big" id="countdown"></div>
+      <div class="muted" id="progressText"></div>
+      <progress id="timeProgress" value="0" max="100"></progress>
 
-<div class="reveal" id="revealBox">
-<div class="big">🎉 Destino revelado</div>
-<div id="revealMsg"></div>
-</div>
-</div>
+      <div class="reveal" id="revealBox">
+        <div class="big">🎉 Destino revelado</div>
+        <div id="revealMsg"></div>
+      </div>
+    </div>
 
-<div class="card">
-<div class="big" style="font-size:16px;">Hitos</div>
-<div class="milestones" id="milestoneList"></div>
-</div>
+    <div class="card">
+      <div class="big" style="font-size:16px;">Checklist...</div>
+      <div class="milestones" id="milestoneList"></div>
+    </div>
 
-<div id="map"></div>
-</div>
+    <div id="map"></div>
+  </div>
 
 <script>
-/* 🔐 CONTRASEÑA */
-const CORRECT_PASSWORD = "14022024"; // CAMBIA ESTO
+$(function () {
+  // =========================
+  // CONFIG
+  // =========================
+  const CORRECT_PASSWORD = "30112025"; // <-- cambia esto si quieres
 
-function checkPassword() {
-  const input = document.getElementById("passwordInput").value;
-  if (input === CORRECT_PASSWORD) {
-    document.getElementById("loginScreen").style.display = "none";
-  } else {
-    document.getElementById("errorMsg").style.display = "block";
+  const START = new Date("2026-02-13T17:00:00+01:00");
+  const END   = new Date("2026-05-08T18:00:00+02:00"); // OJO: aquí pusiste abril en tu código
+
+  const ORIGIN = { name:"Sant Andreu de la Barca", lat:41.4472, lng:1.97594 };
+  const DEST   = { name:"Jaca", lat:42.5710, lng:-0.54945 };
+
+  // Tu ROUTE de 86 puntos (lo dejo tal cual)
+  const ROUTE = [
+    [41.452607,1.964512],
+    [41.47089992612617,1.9617624362689818],
+    [41.487305506390705,1.932490357162665],
+    [41.510016597830955,1.9021124248993373],
+    [41.531085916238084,1.8721365710129185],
+    [41.55316602648174,1.8414407728110467],
+    [41.56803901666494,1.8054974786712488],
+    [41.58646488295906,1.7729950018779246],
+    [41.59618992895016,1.7383709585045504],
+    [41.597898067023614,1.6969273185512321],
+    [41.58903449566267,1.660887319470276],
+    [41.603312480271654,1.6238505244260548],
+    [41.593400510498256,1.5860387031315273],
+    [41.59899533814595,1.5431161891681058],
+    [41.61864062718665,1.51101730980161],
+    [41.63088402344431,1.4714314960781152],
+    [41.62523545349243,1.431658110832198],
+    [41.62146871677162,1.388823775775206],
+    [41.63247530929435,1.3478608329623045],
+    [41.65340249341992,1.3148093504498364],
+    [41.6781639560166,1.2883907864453659],
+    [41.6844084569665,1.2489007321005636],
+    [41.666681168212875,1.2137407248596035],
+    [41.6579144107618,1.1714360390757264],
+    [41.65867075310804,1.1292961078476849],
+    [41.648006380669635,1.0914546404068628],
+    [41.636608001311934,1.0503074840932358],
+    [41.636320820404904,1.0073741064502657],
+    [41.63992962145644,0.9640201373859064],
+    [41.64398903473768,0.9203929594178027],
+    [41.63989212207659,0.8768301293443814],
+    [41.63674757567758,0.8330484929744901],
+    [41.63693058695802,0.7896621033299737],
+    [41.63198684999359,0.748632564656919],
+    [41.62970103232361,0.7051851922860255],
+    [41.64830305131493,0.6718094228277594],
+    [41.6640471858027,0.635336814273346],
+    [41.660564424877535,0.5916345610504685],
+    [41.6496899394816,0.5578081260868993],
+    [41.665644991005166,0.519336725814828],
+    [41.687716399685605,0.4882703429702421],
+    [41.70759294010115,0.4533665595111356],
+    [41.72767411943368,0.42007830068118274],
+    [41.75608715405344,0.39939938902514477],
+    [41.77659174125347,0.365187902484292],
+    [41.800515352145965,0.3358579228718946],
+    [41.82648919978336,0.31100969779413223],
+    [41.85057756210451,0.2832556348351482],
+    [41.87318395086917,0.2519651082774314],
+    [41.89927304470564,0.2265340349420274],
+    [41.92953034974608,0.21102519445775522],
+    [41.95423639800067,0.18263977981589422],
+    [41.97310020615944,0.14630268819440886],
+    [41.991125379137685,0.10989413824758489],
+    [42.01057733244741,0.07485514789344258],
+    [42.032405129428064,0.043526079656874626],
+    [42.04819938777617,0.005384198455756967],
+    [42.05475377006316,-0.03674157673026442],
+    [42.0776004786273,-0.0661921454433633],
+    [42.092921662769065,-0.10327480285354812],
+    [42.09914660090719,-0.1464545359037085],
+    [42.108539534863354,-0.18867039157241242],
+    [42.114628825634526,-0.23184191216449193],
+    [42.1122116569,-0.2754565876454764],
+    [42.13308292567995,-0.3064335496873845],
+    [42.14255048210132,-0.34253922406529375],
+    [42.149460861381414,-0.3834705813306516],
+    [42.16100606606316,-0.4226029599864839],
+    [42.191617305755784,-0.43453189663098785],
+    [42.22291720908761,-0.4430741211722054],
+    [42.25547648173761,-0.4437025314089838],
+    [42.28221463992506,-0.42369031996253204],
+    [42.31391221474105,-0.4253050772551144],
+    [42.340185096129844,-0.4003241754137594],
+    [42.36909148006401,-0.38179949225176435],
+    [42.399225275982815,-0.3729699708656255],
+    [42.424611142747466,-0.39594071251764523],
+    [42.45628947926597,-0.38963308579371475],
+    [42.48492266355583,-0.3744337278535434],
+    [42.50937862759796,-0.3523180277623435],
+    [42.530130643936815,-0.36493394856964634],
+    [42.54230749611439,-0.4025310642725218],
+    [42.5520332159025,-0.4449299288673715],
+    [42.558534257960915,-0.48829549627127106],
+    [42.57223679192396,-0.5272539612285121],
+    [42.58107,-0.53476]
+  ];
+
+  // Recomendación: deja pct únicos y en orden ascendente (esto es tuyo para personalizar)
+  const MILESTONES = [
+    { pct: 8,  hint:"👟 Escoge un buen outfit de cena, y que no sea del señor de la noche..." },
+    { pct: 17, hint:"🧥 Algo de abrigo ligero." },
+    { pct: 25, hint:"🎒 Mochila pequeña." },
+    { pct: 33, hint:"🏔️ Huele a montaña." },
+    { pct: 41, hint:"🏰 Sitio con historia."},
+    { pct: 50, hint:"🏰 Stio con historia."},
+    { pct: 58, hint:"🏰 Sio con historia."},
+    { pct: 67, hint:"🏰 So con historia."},
+    { pct: 75, hint:"🏰 S con historia."},
+    { pct: 83, hint:"🏰 Son historia."},
+    { pct: 92, hint:"🏰 Shistoria."},
+    { pct: 100, hint:"🏰 Sditio con historia."} 
+  ];
+
+  // =========================
+  // LOGIN (jQuery)
+  // =========================
+  function checkPassword() {
+    const input = $("#passwordInput").val();
+    if (input === CORRECT_PASSWORD) {
+      $("#loginScreen").hide();
+      $("#errorMsg").hide();
+    } else {
+      $("#errorMsg").show();
+    }
   }
-}
 
-/* CONFIG */
-const START = new Date("2026-02-14T00:00:00+01:00");
-const END = new Date("2026-05-08T18:00:00+02:00");
+  $("#loginBtn").on("click", checkPassword);
+  $("#passwordInput").on("keydown", function (e) {
+    if (e.key === "Enter") checkPassword();
+  });
 
-const ORIGIN = { name:"Sant Andreu de la Barca", lat:41.4472, lng:1.97594 };
-const DEST = { name:"Jaca", lat:42.5710, lng:-0.54945 };
+  // =========================
+  // HELPERS (JS puro, correcto)
+  // =========================
+  function clamp(n,a,b){ return Math.max(a,Math.min(b,n)); }
+  function toRad(d){ return d*Math.PI/180; }
 
-const ROUTE = [
-[41.4472,1.97594],
-[41.6176,0.6200],
-[41.5220,-0.3500],
-[42.1401,-0.4089],
-[42.2740,-0.6890],
-[42.5190,-0.3660],
-[42.5710,-0.54945]
-];
+  // Distancia Haversine en km, puntos en formato [lat,lng]
+  function dist(a,b){
+    const R=6371;
+    const dLat=toRad(b[0]-a[0]);
+    const dLng=toRad(b[1]-a[1]);
+    const s=Math.sin(dLat/2)**2+Math.cos(toRad(a[0]))*Math.cos(toRad(b[0]))*Math.sin(dLng/2)**2;
+    return 2*R*Math.asin(Math.sqrt(s));
+  }
 
-const MILESTONES = [
-{ pct:10, hint:"👟 Zapatillas cómodas." },
-{ pct:25, hint:"🧥 Algo de abrigo ligero." },
-{ pct:40, hint:"🎒 Mochila pequeña." },
-{ pct:60, hint:"🏔️ Huele a montaña." },
-{ pct:80, hint:"🏰 Sitio con historia." }
-];
+  function totalKm(r){
+    let t=0;
+    for(let i=1;i<r.length;i++) t+=dist(r[i-1],r[i]);
+    return t;
+  }
 
-/* HELPERS */
-function clamp(n,a,b){ return Math.max(a,Math.min(b,n)); }
-function toRad(d){ return d*Math.PI/180; }
-function dist(a,b){
-const R=6371;
-const dLat=toRad(b[0]-a[0]);
-const dLng=toRad(b[1]-a[1]);
-const s=Math.sin(dLat/2)**2+Math.cos(toRad(a[0]))*Math.cos(toRad(b[0]))*Math.sin(dLng/2)**2;
-return 2*R*Math.asin(Math.sqrt(s));
-}
-function totalKm(r){ let t=0; for(let i=1;i<r.length;i++) t+=dist(r[i-1],r[i]); return t; }
+  function pointAlongRoute(points, targetKm){
+    let traveled = 0;
+    for(let i=1;i<points.length;i++){
+      const seg = dist(points[i-1], points[i]);
+      if (traveled + seg >= targetKm){
+        const tt = seg === 0 ? 0 : ((targetKm - traveled) / seg);
+        const lat = points[i-1][0] + (points[i][0]-points[i-1][0]) * tt;
+        const lng = points[i-1][1] + (points[i][1]-points[i-1][1]) * tt;
+        return { point:[lat,lng], i, tt };
+      }
+      traveled += seg;
+    }
+    return { point: points[points.length-1], i: points.length-1, tt: 1 };
+  }
 
-function format(ms){
-const s=Math.floor(ms/1000)%60;
-const m=Math.floor(ms/60000)%60;
-const h=Math.floor(ms/3600000)%24;
-const d=Math.floor(ms/86400000);
-return `${d} días ${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
-}
+  function sliceRouteToKm(points, km){
+    if (km <= 0) return [points[0]];
+    const cut = pointAlongRoute(points, km);
+    const out = points.slice(0, cut.i);
+    out.push(cut.point);
+    return out;
+  }
 
-/* MAPA */
-const map=L.map("map");
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
-const fullLine=L.polyline(ROUTE,{opacity:.2}).addTo(map);
-const drawnLine=L.polyline([ROUTE[0]],{weight:6}).addTo(map);
-const car=L.marker(ROUTE[0],{
-icon:L.divIcon({html:"🚗",className:"",iconSize:[20,20]})
-}).addTo(map);
-map.fitBounds(fullLine.getBounds());
+  function format(ms){
+    const s=Math.floor(ms/1000)%60;
+    const m=Math.floor(ms/60000)%60;
+    const h=Math.floor(ms/3600000)%24;
+    const d=Math.floor(ms/86400000);
+    return `${d} días ${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+  }
 
-const kmTotal=totalKm(ROUTE);
+  // =========================
+  // MAPA (Leaflet)
+  // =========================
+  const map = L.map("map");
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
 
-function tick(){
-const now=new Date();
-const t=clamp((now-START)/(END-START),0,1);
-const kmDone=kmTotal*t;
+  const drawnLine = L.polyline([ROUTE[0]], { weight: 6 }).addTo(map);
 
-const remaining=END-now;
-document.getElementById("countdown").innerText=
-remaining>0?`Faltan ${format(remaining)}`:"Es hoy.";
+  const car = L.marker(ROUTE[0], {
+    icon: L.divIcon({ html:"🚗", className:"", iconSize:[20,20] })
+  }).addTo(map);
 
-document.getElementById("timeProgress").value=Math.round(t*100);
-document.getElementById("progressText").innerText=
-`Progreso: ${Math.round(t*100)}%`;
+  // Vista inicial sin “spoilear” el destino
+  map.setView([41.8, 0.5], 7);
 
-if(now>=END){
-document.getElementById("revealBox").style.display="block";
-document.getElementById("revealMsg").innerHTML=
-`Nos vamos a <b>${DEST.name}</b> 💛`;
-L.marker([DEST.lat,DEST.lng]).addTo(map);
-}
+  const kmTotal = totalKm(ROUTE);
+  let destMarkerAdded = false;
 
-const milestoneList=document.getElementById("milestoneList");
-milestoneList.innerHTML="";
-MILESTONES.forEach(m=>{
-const div=document.createElement("div");
-div.className="mcard"+(t*100>=m.pct?"":" locked");
-div.innerText=t*100>=m.pct?m.hint:"🔒 Bloqueado";
-milestoneList.appendChild(div);
+  // =========================
+  // TICK (progreso continuo)
+  // =========================
+  function tick(){
+    const now = new Date();
+
+    const t = clamp((now - START) / (END - START), 0, 1);
+    const kmDone = kmTotal * t;
+
+    const remaining = END - now;
+    $("#countdown").text(remaining > 0 ? `Faltan ${format(remaining)}` : "Es hoy.");
+
+    $("#timeProgress").val(Math.round(t * 100));
+    $("#progressText").text(`Progreso: ${Math.round(t * 100)}%`);
+
+    // Ruta parcial + coche
+    const partial = sliceRouteToKm(ROUTE, kmDone);
+    drawnLine.setLatLngs(partial);
+    car.setLatLng(partial[partial.length - 1]);
+
+    // Reveal final
+    if (now >= END) {
+      $("#revealBox").show();
+      $("#revealMsg").html(`Nos vamos a <b>${DEST.name}</b> 💛`);
+
+      if (!destMarkerAdded) {
+        L.marker([DEST.lat, DEST.lng]).addTo(map);
+        destMarkerAdded = true;
+      }
+    }
+
+    // Hitos
+    const pct = t * 100;
+    const $list = $("#milestoneList");
+    $list.empty();
+
+    MILESTONES.forEach(m => {
+      const unlocked = pct >= m.pct;
+      $("<div>")
+        .addClass("mcard")
+        .toggleClass("locked", !unlocked)
+        .text(unlocked ? m.hint : "🔒 Bloqueado")
+        .appendTo($list);
+    });
+  }
+
+  tick();
+  setInterval(tick, 1000);
 });
-}
-
-tick();
-setInterval(tick,1000);
 </script>
 </body>
 </html>
+
